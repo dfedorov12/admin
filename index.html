@@ -4,222 +4,263 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>DIHAG Admin · Berechtigungen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js"></script>
   <style>
-    :root {
-      --bg:#0f1117; --surface:#1a1d27; --surface2:#20243a; --border:#2a2d3e;
-      --accent:#4f8ef7; --accent-h:#3d7ae5;
-      --danger:#e05c5c; --success:#4caf7d; --warn:#f0a500;
-      --text:#e2e4ed; --muted:#6b7090; --radius:8px;
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --navy:#0a1f3c; --navy2:#16345a; --navy3:#1e4a7a;
+      --red:#c0392b;  --red2:#a93226;  --red-bg:rgba(192,57,43,.08);
+      --blue:#2563eb; --blue-bg:rgba(37,99,235,.07);
+      --green:#16a34a;--green-bg:rgba(22,163,74,.08);
+      --yellow:#d97706;--yellow-bg:rgba(217,119,6,.09);
+      --surface:#fff; --bg:#f2f4f7; --bg2:#eef0f4;
+      --border:rgba(10,31,60,.1); --border2:rgba(10,31,60,.18);
+      --text:#1a2942;  --text-dim:#6b7a8f; --text-muted:#9ba8b8;
+      --r:10px; --r-sm:6px;
+      --shadow:0 2px 12px rgba(10,31,60,.09);
     }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh}
+    html,body{height:100%;font-family:Inter,sans-serif;background:var(--bg);color:var(--text)}
 
-    /* ── Login ── */
-    #login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px}
-    .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 48px;text-align:center;max-width:360px}
-    .login-card h1{font-size:22px;margin-bottom:6px}
-    .login-card p{color:var(--muted);margin-bottom:24px;font-size:13px}
-
-    /* ── No Access ── */
-    #no-access{display:flex;align-items:center;justify-content:center;min-height:100vh}
-    .nac{text-align:center;max-width:340px}
-    .nac h2{font-size:20px;margin-bottom:8px}
-    .nac p{color:var(--muted);font-size:13px;margin-bottom:20px}
-
-    /* ── Top bar ── */
-    #topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:16px;height:52px;position:sticky;top:0;z-index:100}
-    #topbar h1{font-size:16px;font-weight:600;flex:1}
-    .user-badge{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
-    .user-badge strong{color:var(--text)}
-
-    /* ── Tabs ── */
-    #tabs{display:flex;gap:2px;padding:16px 24px 0;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:52px;z-index:99}
-    .tab{padding:8px 16px;border-radius:var(--radius) var(--radius) 0 0;cursor:pointer;color:var(--muted);border:1px solid transparent;border-bottom:none;transition:all .15s;font-size:13px;user-select:none}
-    .tab:hover{color:var(--text);background:var(--surface)}
-    .tab.active{color:var(--text);background:var(--surface);border-color:var(--border)}
-
-    /* ── Content ── */
-    #content{padding:24px}
-    .panel{display:none}
-    .panel.active{display:block}
-
-    /* ── Buttons ── */
-    .btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;transition:all .15s;text-decoration:none}
-    .btn-primary{background:var(--accent);color:#fff}
-    .btn-primary:hover{background:var(--accent-h)}
-    .btn-danger{background:var(--danger);color:#fff}
-    .btn-danger:hover{opacity:.85}
-    .btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}
-    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
-    .btn-success{background:var(--success);color:#fff}
-    .btn-success:hover{opacity:.85}
-    .btn-warn{background:var(--warn);color:#000}
-    .btn-warn:hover{opacity:.85}
-    .btn-sm{padding:4px 10px;font-size:12px}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-
-    /* ── Inputs ── */
-    select,input[type=text],input[type=email],textarea{
-      background:var(--bg);color:var(--text);border:1px solid var(--border);
-      border-radius:6px;padding:6px 10px;font-size:13px;outline:none;transition:border-color .15s
-    }
-    select:focus,input:focus,textarea:focus{border-color:var(--accent)}
-    select{cursor:pointer}
-
-    /* ── Toolbar ── */
-    .toolbar{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
-    .toolbar-right{margin-left:auto;display:flex;gap:8px}
-    .filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .search-box{min-width:220px}
-
-    /* ── Table ── */
-    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
-    table{width:100%;border-collapse:collapse}
-    thead th{background:#13151f;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;white-space:nowrap}
-    tbody tr{border-top:1px solid var(--border);transition:background .1s}
-    tbody tr:hover{background:rgba(255,255,255,.03)}
-    td{padding:10px 14px;vertical-align:middle}
-    .empty-row td{text-align:center;color:var(--muted);padding:32px}
-
-    /* ── Badges ── */
-    .badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
-    .badge-dms{background:rgba(124,77,255,.2);color:#b39ddb}
-    .badge-tickets{background:rgba(0,180,216,.2);color:#80deea}
-    .badge-orgchart{background:rgba(247,127,0,.2);color:#ffcc80}
-    .badge-all{background:rgba(76,175,125,.2);color:#a5d6a7}
-    .badge-admin{background:rgba(224,92,92,.2);color:#ef9a9a}
-    .badge-editor{background:rgba(240,165,0,.2);color:#ffe082}
-    .badge-viewer{background:rgba(76,175,125,.2);color:#a5d6a7}
-    .badge-none{background:rgba(107,112,144,.2);color:#90a4ae}
-    .badge-superadmin{background:rgba(79,142,247,.25);color:#90caf9}
-
-    /* ── Modal ── */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:1000}
-    .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;min-width:380px;max-width:480px;width:100%}
-    .modal h3{margin-bottom:16px;font-size:16px}
-    .form-row{margin-bottom:12px}
-    .form-row label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
-    .form-row input,.form-row select,.form-row textarea{width:100%}
-    .form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
-
-    /* ── Toast ── */
-    #toast-container{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:9999}
-    .toast{padding:10px 16px;border-radius:8px;font-size:13px;background:var(--surface);border:1px solid var(--border);animation:slide-in .2s ease;max-width:340px}
-    .toast.success{border-color:var(--success);color:var(--success)}
-    .toast.error{border-color:var(--danger);color:var(--danger)}
-    .toast.info{border-color:var(--accent);color:var(--accent)}
-    .toast.warn{border-color:var(--warn);color:var(--warn)}
-    @keyframes slide-in{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
-
-    /* ── Stats ── */
-    .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px}
-    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
-    .stat-card .val{font-size:28px;font-weight:700}
-    .stat-card .lbl{font-size:12px;color:var(--muted);margin-top:2px}
-
-    /* ── Overview app columns ── */
-    .ov-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-    @media(max-width:900px){.ov-grid{grid-template-columns:1fr}}
-    .ov-item{padding:8px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
-
-    /* ── Backup list ── */
-    .backup-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--border)}
-    .backup-item:first-child{border-top:none}
-    .backup-item .ts{color:var(--muted);font-size:12px;min-width:155px}
-
-    /* ── Setup banner ── */
-    .setup-banner{background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.3);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:16px;margin-bottom:16px}
-    .setup-banner p{flex:1;color:var(--warn);font-size:13px}
-
-    /* ── Spinner ── */
-    .spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;display:inline-block;vertical-align:middle}
+    /* ── BOOT ── */
+    #boot{position:fixed;inset:0;background:var(--navy);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;z-index:9999;gap:16px}
+    .boot-title{color:#fff;font-size:22px;font-weight:700}
+    .boot-sub{color:rgba(255,255,255,.5);font-size:13px}
+    .boot-spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.2);
+      border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+    .boot-err{color:#f87171;font-size:12px;max-width:400px;text-align:center;line-height:1.6;
+      background:rgba(255,255,255,.07);padding:12px 18px;border-radius:8px;display:none}
+    .boot-btn{padding:10px 24px;background:var(--red);color:#fff;border:none;border-radius:8px;
+      font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;display:none}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* ── Section header ── */
-    .section-hdr{padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+    /* ── NO ACCESS ── */
+    #no-access{display:none;position:fixed;inset:0;background:var(--bg);
+      align-items:center;justify-content:center;z-index:9999}
+    .nac-card{text-align:center;max-width:440px;padding:40px;background:var(--surface);
+      border-radius:16px;box-shadow:var(--shadow)}
+    .nac-card h2{font-size:22px;color:var(--navy);margin-bottom:8px;font-weight:700}
+    .nac-card p{color:var(--text-dim);margin-bottom:24px;font-size:14px;line-height:1.6}
+
+    /* ── APP SHELL ── */
+    #app{display:none;flex-direction:column;height:100vh}
+
+    /* ── HEADER ── */
+    header{height:48px;background:var(--navy);display:flex;align-items:center;
+      padding:0 16px;gap:12px;flex-shrink:0;position:sticky;top:0;z-index:100}
+    .hdr-brand{display:flex;align-items:center;gap:10px}
+    .hdr-tag{font-size:11px;font-weight:700;background:rgba(255,255,255,.12);
+      color:rgba(255,255,255,.7);padding:3px 9px;border-radius:4px;letter-spacing:.04em}
+    .hdr-divider{width:1px;height:24px;background:rgba(255,255,255,.12)}
+    .hdr-nav{display:flex;gap:2px}
+    .hdr-tab{background:none;border:none;color:rgba(255,255,255,.5);padding:6px 14px;
+      border-radius:6px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+    .hdr-tab:hover{background:rgba(255,255,255,.1);color:#fff}
+    .hdr-tab.on{background:rgba(255,255,255,.15);color:#fff}
+    .hdr-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+    .hdr-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+      color:rgba(255,255,255,.85);padding:5px 12px;border-radius:6px;
+      font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+    .hdr-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+    .hdr-av{width:30px;height:30px;border-radius:50%;background:var(--red);
+      color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+
+    /* ── CONTENT ── */
+    #content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+    .panel{display:none;flex:1;overflow:hidden;flex-direction:column}
+    .panel.active{display:flex}
+
+    /* ── TOOLBAR ── */
+    .toolbar{padding:12px 20px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--surface);flex-wrap:wrap}
+    .tkt-search{padding:7px 12px;border:1.5px solid var(--border2);
+      border-radius:6px;font-family:inherit;font-size:12px;outline:none;min-width:220px}
+    .tkt-search:focus{border-color:var(--navy)}
+    .sel{padding:7px 10px;border:1.5px solid var(--border2);border-radius:6px;
+      font-family:inherit;font-size:12px;outline:none;background:var(--surface)}
+    .ml-auto{margin-left:auto}
+    .gap{display:flex;gap:8px;align-items:center}
+
+    /* ── BUTTONS ── */
+    .btn{padding:7px 16px;border-radius:6px;font-family:inherit;font-size:12px;
+      font-weight:600;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+    .btn-primary{background:var(--navy);color:#fff}
+    .btn-primary:hover{background:var(--navy2)}
+    .btn-danger{background:var(--red-bg);color:var(--red);border:1.5px solid var(--red)}
+    .btn-danger:hover{background:var(--red);color:#fff}
+    .btn-ghost{background:none;color:var(--text-dim);border:1.5px solid var(--border)}
+    .btn-ghost:hover{border-color:var(--navy);color:var(--navy)}
+    .btn-success{background:var(--green-bg);color:var(--green);border:1.5px solid var(--green)}
+    .btn-success:hover{background:var(--green);color:#fff}
+    .btn-sm{padding:4px 10px;font-size:11px}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+
+    /* ── TABLE ── */
+    .table-wrap{flex:1;overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    thead th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
+      color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;
+      border-bottom:2px solid var(--border);background:#fafbfc;position:sticky;top:0;z-index:1}
+    tbody td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+    tbody tr:hover td{background:rgba(10,31,60,.025)}
+    .empty-row td{text-align:center;color:var(--text-muted);padding:40px}
+
+    /* ── BADGES ── */
+    .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:10px;
+      font-size:10px;font-weight:700;white-space:nowrap}
+    .badge-dms    {background:rgba(124,77,255,.1);color:#7c4dff}
+    .badge-tickets{background:var(--blue-bg);color:var(--blue)}
+    .badge-orgchart{background:var(--yellow-bg);color:var(--yellow)}
+    .badge-all    {background:var(--green-bg);color:var(--green)}
+    .badge-admin  {background:var(--red-bg);color:var(--red)}
+    .badge-editor {background:var(--yellow-bg);color:var(--yellow)}
+    .badge-viewer {background:var(--green-bg);color:var(--green)}
+    .badge-none   {background:rgba(107,114,128,.1);color:#4b5563}
+    .badge-superadmin{background:var(--blue-bg);color:var(--blue)}
+
+    /* ── SETUP BANNER ── */
+    .setup-banner{margin:16px 20px;padding:12px 16px;background:var(--yellow-bg);
+      border:1.5px solid var(--yellow);border-radius:var(--r);
+      display:flex;align-items:center;gap:12px;font-size:13px;color:var(--yellow)}
+    .setup-banner p{flex:1}
+
+    /* ── MODAL ── */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(10,31,60,.45);
+      display:flex;align-items:center;justify-content:center;z-index:1000}
+    .modal{background:var(--surface);border-radius:14px;padding:24px;
+      min-width:380px;max-width:460px;width:100%;box-shadow:0 16px 48px rgba(10,31,60,.18)}
+    .modal h3{font-size:16px;color:var(--navy);margin-bottom:18px}
+    .field-row{margin-bottom:12px}
+    .field-row label{display:block;font-size:10px;font-weight:700;color:var(--text-muted);
+      text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+    .field-row input,.field-row select,.field-row textarea{
+      width:100%;padding:8px 11px;border:1.5px solid var(--border2);border-radius:6px;
+      font-family:inherit;font-size:13px;outline:none;background:var(--surface);transition:border-color .15s}
+    .field-row input:focus,.field-row select:focus,.field-row textarea:focus{border-color:var(--navy)}
+    .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+    /* ── STATS ── */
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;
+      padding:16px 20px;flex-shrink:0}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+    .stat-card .val{font-size:26px;font-weight:700;color:var(--navy)}
+    .stat-card .lbl{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+    /* ── OV GRID ── */
+    .ov-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;
+      padding:0 20px 20px;flex:1;overflow:auto}
+    @media(max-width:900px){.ov-grid{grid-template-columns:1fr}}
+    .ov-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+    .ov-card-hdr{padding:10px 14px;border-bottom:1px solid var(--border);
+      font-size:12px;font-weight:700;color:var(--navy);background:#fafbfc}
+    .ov-item{display:flex;align-items:center;gap:8px;padding:8px 14px;
+      border-top:1px solid var(--border);font-size:12px}
+    .ov-item:first-child{border-top:none}
+
+    /* ── BACKUP LIST ── */
+    .backup-item{display:flex;align-items:center;gap:12px;padding:10px 14px;
+      border-top:1px solid var(--border);font-size:12px}
+    .backup-item:first-child{border-top:none}
+    .backup-item .ts{color:var(--text-muted);min-width:150px}
+
+    /* ── SECTION HDR ── */
+    .sec-hdr{padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.05em;color:var(--text-muted);border-bottom:1px solid var(--border);
+      background:#fafbfc}
+
+    /* ── TOAST ── */
+    #toast-c{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+    .toast{padding:10px 16px;border-radius:8px;font-size:13px;background:var(--surface);
+      border:1px solid var(--border);box-shadow:var(--shadow);animation:slide-in .2s ease;max-width:320px;
+      display:flex;align-items:center;gap:8px}
+    .toast.success{border-color:var(--green);color:var(--green)}
+    .toast.error  {border-color:var(--red);color:var(--red)}
+    .toast.info   {border-color:var(--blue);color:var(--blue)}
+    .toast.warn   {border-color:var(--yellow);color:var(--yellow)}
+    @keyframes slide-in{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+
+    /* ── SPINNER ── */
+    .spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--navy);
+      border-radius:50%;animation:spin .6s linear infinite;display:inline-block;vertical-align:middle}
   </style>
 </head>
 <body>
 
-<!-- ── Login ────────────────────────────────────────────────────────────────── -->
-<div id="login-screen">
-  <div class="login-card">
-    <div style="font-size:42px;margin-bottom:12px">🔐</div>
-    <h1>DIHAG Admin</h1>
-    <p>Berechtigungsverwaltung für DMS, Tickets &amp; OrgChart</p>
-    <button class="btn btn-primary" style="width:100%" onclick="doLogin()">
-      Mit Microsoft anmelden
-    </button>
-    <p id="login-err" style="color:var(--danger);margin-top:12px;font-size:12px;min-height:18px"></p>
-  </div>
+<!-- BOOT -->
+<div id="boot">
+  <div class="boot-spinner"></div>
+  <div class="boot-title">DIHAG Admin</div>
+  <div class="boot-sub" id="boot-sub">Anmeldung läuft…</div>
+  <div class="boot-err"  id="boot-err"></div>
+  <button class="boot-btn" id="boot-btn" onclick="doLogin()">Anmelden</button>
 </div>
 
-<!-- ── No Access ─────────────────────────────────────────────────────────────── -->
-<div id="no-access" hidden>
-  <div class="nac">
+<!-- NO ACCESS -->
+<div id="no-access" style="display:none;position:fixed;inset:0;background:var(--bg);align-items:center;justify-content:center;z-index:9998">
+  <div class="nac-card">
     <div style="font-size:48px;margin-bottom:16px">🚫</div>
     <h2>Kein Zugriff</h2>
-    <p id="no-access-email" style="margin-bottom:8px"></p>
+    <p id="nac-email" style="margin-bottom:8px;font-weight:600;color:var(--text)"></p>
     <p>Dieses Portal ist nur für Administratoren zugänglich.</p>
-    <button class="btn btn-secondary" style="margin-top:16px" onclick="doLogout()">Abmelden</button>
+    <button class="btn btn-ghost" onclick="doLogout()">Abmelden</button>
   </div>
 </div>
 
-<!-- ── Main App ───────────────────────────────────────────────────────────────── -->
-<div id="app" hidden>
-  <div id="topbar">
-    <h1>🔐 DIHAG Admin · Berechtigungsverwaltung</h1>
-    <div class="user-badge">
-      <span>👤</span>
-      <strong id="user-name">–</strong>
-      <span class="badge badge-superadmin">Super-Admin</span>
-      <button class="btn btn-secondary btn-sm" onclick="doLogout()" style="margin-left:8px">Abmelden</button>
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="hdr-brand">
+      <span style="color:#fff;font-size:16px;font-weight:700">🔐 DIHAG Admin</span>
+      <span class="hdr-tag">Berechtigungen</span>
     </div>
-  </div>
-
-  <div id="tabs">
-    <div class="tab active"  data-tab="permissions">📋 Berechtigungen</div>
-    <div class="tab"         data-tab="backup">💾 Backup</div>
-    <div class="tab"         data-tab="overview">📊 Übersicht</div>
-  </div>
+    <div class="hdr-divider"></div>
+    <nav class="hdr-nav">
+      <button class="hdr-tab on" data-tab="permissions">📋 Berechtigungen</button>
+      <button class="hdr-tab"    data-tab="backup">💾 Backup</button>
+      <button class="hdr-tab"    data-tab="overview">📊 Übersicht</button>
+    </nav>
+    <div class="hdr-right">
+      <span style="color:rgba(255,255,255,.5);font-size:12px">👤</span>
+      <span style="color:rgba(255,255,255,.75);font-size:12px" id="hdr-name"></span>
+      <span class="badge badge-superadmin" id="hdr-role">Super-Admin</span>
+      <button class="hdr-btn" onclick="doLogout()">Abmelden</button>
+    </div>
+  </header>
 
   <div id="content">
 
-    <!-- ── Berechtigungen ──────────────────────────────────────────────────── -->
-    <div id="panel-permissions" class="panel active">
+    <!-- ── Berechtigungen ─────────────────────────────── -->
+    <div class="panel active" id="panel-permissions">
       <div id="setup-banner" class="setup-banner" hidden>
-        <p>⚠️ Die SharePoint-Liste <strong>AppPermissions</strong> wurde noch nicht erstellt.</p>
-        <button class="btn btn-warn" onclick="setupList()">Liste jetzt erstellen</button>
+        <p>⚠️ SharePoint-Liste <strong>AppPermissions</strong> existiert noch nicht.</p>
+        <button class="btn btn-primary btn-sm" onclick="setupList()">Liste erstellen</button>
       </div>
-
       <div class="toolbar">
-        <div class="filter-bar">
-          <input type="text" class="search-box" id="search-input"
-                 placeholder="🔍 Name oder E-Mail…" oninput="renderTable()">
-          <select id="filter-app" onchange="renderTable()">
-            <option value="">Alle Apps</option>
-            <option value="dms">DMS</option>
-            <option value="tickets">Tickets</option>
-            <option value="orgchart">OrgChart</option>
-            <option value="*">* (Global)</option>
-          </select>
-          <select id="filter-role" onchange="renderTable()">
-            <option value="">Alle Rollen</option>
-            <option value="admin">Admin</option>
-            <option value="editor">Editor</option>
-            <option value="viewer">Viewer</option>
-            <option value="none">None</option>
-          </select>
-        </div>
-        <div class="toolbar-right">
-          <button class="btn btn-secondary" onclick="loadPermissions()">↺ Aktualisieren</button>
-          <button class="btn btn-primary"   onclick="openAddModal()">+ Hinzufügen</button>
+        <input  type="text" class="tkt-search" id="search-input"
+                placeholder="🔍 Name oder E-Mail…" oninput="renderTable()">
+        <select class="sel" id="filter-app"  onchange="renderTable()">
+          <option value="">Alle Apps</option>
+          <option value="dms">DMS</option>
+          <option value="tickets">Tickets</option>
+          <option value="orgchart">OrgChart</option>
+          <option value="*">* Global</option>
+        </select>
+        <select class="sel" id="filter-role" onchange="renderTable()">
+          <option value="">Alle Rollen</option>
+          <option value="admin">Admin</option>
+          <option value="editor">Editor</option>
+          <option value="viewer">Viewer</option>
+          <option value="none">None</option>
+        </select>
+        <div class="ml-auto gap">
+          <button class="btn btn-ghost"    onclick="loadPermissions()">↺ Aktualisieren</button>
+          <button class="btn btn-primary"  onclick="openAddModal()">+ Hinzufügen</button>
         </div>
       </div>
-
       <div class="table-wrap">
-        <table id="perm-table">
+        <table>
           <thead>
             <tr>
               <th>Anzeigename</th>
@@ -228,51 +269,53 @@
               <th>Rolle</th>
               <th>Notizen</th>
               <th>Geändert</th>
-              <th style="width:90px"></th>
+              <th style="width:80px"></th>
             </tr>
           </thead>
           <tbody id="perm-tbody">
-            <tr class="empty-row"><td colspan="7"><div class="spinner"></div></td></tr>
+            <tr class="empty-row"><td colspan="7"><div class="spin"></div></td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- ── Backup ──────────────────────────────────────────────────────────── -->
-    <div id="panel-backup" class="panel">
-      <div class="toolbar" style="margin-bottom:20px">
+    <!-- ── Backup ─────────────────────────────────────── -->
+    <div class="panel" id="panel-backup">
+      <div class="toolbar">
         <div>
-          <strong>Backup erstellen</strong>
-          <span style="color:var(--muted);margin-left:10px;font-size:12px">
-            Sichert alle aktuellen Einträge in die Liste <em>AppPermissionsBackup</em>
+          <strong style="font-size:13px">Backup erstellen</strong>
+          <span style="color:var(--text-muted);margin-left:8px;font-size:12px">
+            Speichert alle Einträge in <em>AppPermissionsBackup</em>
           </span>
         </div>
-        <div class="toolbar-right">
+        <div class="ml-auto">
           <button class="btn btn-success" onclick="createBackup()">💾 Backup jetzt erstellen</button>
         </div>
       </div>
-      <div class="table-wrap">
-        <div class="section-hdr">Backup-Verlauf</div>
-        <div id="backup-list">
-          <div style="padding:32px;text-align:center"><div class="spinner"></div></div>
+      <div style="flex:1;overflow:auto;padding:20px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+          <div class="sec-hdr">Backup-Verlauf</div>
+          <div id="backup-list">
+            <div style="padding:32px;text-align:center"><div class="spin"></div></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- ── Übersicht ───────────────────────────────────────────────────────── -->
-    <div id="panel-overview" class="panel">
-      <div class="stats-grid" id="stats-grid"></div>
+    <!-- ── Übersicht ──────────────────────────────────── -->
+    <div class="panel" id="panel-overview">
+      <div class="stats-row" id="stats-grid"></div>
       <div class="ov-grid">
-        <div class="table-wrap">
-          <div class="section-hdr">🟣 DMS</div>
+        <div class="ov-card">
+          <div class="ov-card-hdr">🟣 DMS</div>
           <div id="ov-dms"></div>
         </div>
-        <div class="table-wrap">
-          <div class="section-hdr">🔵 Tickets</div>
+        <div class="ov-card">
+          <div class="ov-card-hdr">🔵 Tickets</div>
           <div id="ov-tickets"></div>
         </div>
-        <div class="table-wrap">
-          <div class="section-hdr">🟠 OrgChart</div>
+        <div class="ov-card">
+          <div class="ov-card-hdr">🟠 OrgChart</div>
           <div id="ov-orgchart"></div>
         </div>
       </div>
@@ -281,21 +324,20 @@
   </div><!-- #content -->
 </div><!-- #app -->
 
-<!-- ── Modal ──────────────────────────────────────────────────────────────────── -->
+<!-- MODAL -->
 <div id="modal" class="modal-backdrop" hidden onclick="if(event.target===this)closeModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 id="modal-title">Berechtigung hinzufügen</h3>
     <input type="hidden" id="edit-id">
-    <div class="form-row">
+    <div class="field-row">
       <label>E-Mail-Adresse *</label>
-      <input type="email" id="f-email" placeholder="max@dihag.com"
-             oninput="lookupUser(this.value)">
+      <input type="email" id="f-email" placeholder="max@dihag.com" oninput="lookupUser(this.value)">
     </div>
-    <div class="form-row">
+    <div class="field-row">
       <label>Anzeigename</label>
       <input type="text" id="f-name" placeholder="Wird automatisch befüllt…">
     </div>
-    <div class="form-row">
+    <div class="field-row">
       <label>App *</label>
       <select id="f-app">
         <option value="dms">DMS</option>
@@ -304,7 +346,7 @@
         <option value="*">* (Alle Apps)</option>
       </select>
     </div>
-    <div class="form-row">
+    <div class="field-row">
       <label>Rolle *</label>
       <select id="f-role">
         <option value="viewer">Viewer — nur lesen</option>
@@ -313,537 +355,447 @@
         <option value="none">None — komplett gesperrt</option>
       </select>
     </div>
-    <div class="form-row">
+    <div class="field-row">
       <label>Notizen</label>
       <textarea id="f-notes" rows="2" placeholder="Optional…"></textarea>
     </div>
-    <div class="form-actions">
-      <button class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
-      <button class="btn btn-primary" id="modal-save-btn" onclick="savePermission()">Speichern</button>
+    <div class="modal-actions">
+      <button class="btn btn-ghost"    onclick="closeModal()">Abbrechen</button>
+      <button class="btn btn-primary"  id="modal-save-btn" onclick="savePermission()">Speichern</button>
     </div>
   </div>
 </div>
 
-<div id="toast-container"></div>
+<div id="toast-c"></div>
 
 <script>
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════
    CONFIG
-════════════════════════════════════════════════════════ */
+════════════════════════════════════════════════ */
 const CLIENT_ID    = '75e627e8-2de0-4ec6-bec9-311757b89e08';
 const TENANT_ID    = 'fdb70646-023a-403b-a4b9-1f474a935123';
-const SUPER_ADMINS = ['fedorov@dihag.com'];
+const SUPER_ADMINS = ['administrator@dihag.com'];
 const SP_SITE_REL  = 'dihag.sharepoint.com:/sites/ticket';
 const LIST_NAME    = 'AppPermissions';
 const BACKUP_LIST  = 'AppPermissionsBackup';
 const SCOPES       = ['User.Read','Sites.Read.All','Sites.ReadWrite.All',
                       'Files.ReadWrite.All','Mail.Send'];
 
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════
    STATE
-════════════════════════════════════════════════════════ */
+════════════════════════════════════════════════ */
 let msalApp, account;
 let _tokenPopupBusy = false;
 let siteId = null, listId = null, backupListId = null;
 let allPerms = [];
 let _lookupTimer = null;
 
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════ */
+const $id = s => document.getElementById(s);
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDate(s){
+  if(!s)return'–';
+  try{return new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',
+    year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(s));}catch{return s;}
+}
+function toast(msg, type='info'){
+  const el=document.createElement('div');
+  el.className='toast '+type;
+  el.textContent=msg;
+  $id('toast-c').appendChild(el);
+  setTimeout(()=>el.remove(), 4500);
+}
+function bootMsg(t){$id('boot-sub').textContent=t;}
+function bootErr(t){const e=$id('boot-err');e.textContent=t;e.style.display='block';}
+
+/* ════════════════════════════════════════════════
    MSAL / AUTH
-════════════════════════════════════════════════════════ */
-async function initApp() {
-  if (typeof msal === 'undefined') {
-    id('login-err').textContent = 'MSAL konnte nicht geladen werden.';
-    return;
-  }
-  msalApp = new msal.PublicClientApplication({
-    auth: {
-      clientId:    CLIENT_ID,
-      authority:   `https://login.microsoftonline.com/${TENANT_ID}`,
-      redirectUri: 'https://dfedorov12.github.io/tickets/'
+════════════════════════════════════════════════ */
+async function initApp(){
+  if(typeof msal==='undefined'){bootErr('MSAL konnte nicht geladen werden.');$id('boot-btn').style.display='block';return;}
+  msalApp=new msal.PublicClientApplication({
+    auth:{
+      clientId:CLIENT_ID,
+      authority:`https://login.microsoftonline.com/${TENANT_ID}`,
+      redirectUri:'https://dfedorov12.github.io/tickets/'
     },
-    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+    cache:{cacheLocation:'localStorage',storeAuthStateInCookie:false}
   });
-
-  let initDone = false;
+  let initDone=false;
   await Promise.race([
-    msalApp.initialize().then(() => { initDone = true; }).catch(() => {}),
-    new Promise(r => setTimeout(r, 3000))
+    msalApp.initialize().then(()=>{initDone=true;}).catch(()=>{}),
+    new Promise(r=>setTimeout(r,3000))
   ]);
-  if (initDone) { try { await msalApp.handleRedirectPromise(); } catch {} }
+  if(initDone){try{await msalApp.handleRedirectPromise();}catch{}}
+  const accounts=msalApp.getAllAccounts();
+  if(accounts.length){account=accounts[0];msalApp.setActiveAccount(account);await afterLogin();}
+  else{bootMsg('Bitte anmelden');$id('boot-btn').style.display='block';}
+}
 
-  const accounts = msalApp.getAllAccounts();
-  if (accounts.length) {
-    account = accounts[0];
-    msalApp.setActiveAccount(account);
+async function doLogin(){
+  $id('boot-btn').style.display='none';
+  bootMsg('Anmeldung läuft…');
+  try{
+    const r=await msalApp.loginPopup({scopes:SCOPES});
+    account=r.account;msalApp.setActiveAccount(account);
     await afterLogin();
+  }catch(e){
+    bootErr(e.message||'Anmeldefehler');
+    $id('boot-btn').style.display='block';
   }
 }
 
-async function doLogin() {
-  id('login-err').textContent = '';
-  try {
-    const r = await msalApp.loginPopup({ scopes: SCOPES });
-    account = r.account;
-    msalApp.setActiveAccount(account);
-    await afterLogin();
-  } catch(e) {
-    id('login-err').textContent = e.message || 'Anmeldefehler';
-  }
-}
+function doLogout(){msalApp?.logoutPopup({account}).catch(()=>{});location.reload();}
 
-function doLogout() {
-  msalApp.logoutPopup({ account }).catch(() => {});
-  location.reload();
-}
-
-async function afterLogin() {
-  const email = (account.username || '').toLowerCase();
-  if (!SUPER_ADMINS.includes(email)) {
-    id('login-screen').hidden = true;
-    id('no-access').hidden    = false;
-    id('no-access-email').textContent = `Angemeldet als: ${account.username}`;
+async function afterLogin(){
+  const email=(account.username||'').toLowerCase();
+  if(!SUPER_ADMINS.includes(email)){
+    $id('boot').style.display='none';
+    const el=$id('no-access');el.style.display='flex';
+    $id('nac-email').textContent='Angemeldet als: '+account.username;
     return;
   }
-  id('login-screen').hidden = true;
-  id('app').hidden          = false;
-  id('user-name').textContent = account.name || account.username;
-
+  $id('boot').style.display='none';
+  $id('app').style.display='flex';
+  $id('hdr-name').textContent=account.name||account.username;
+  $id('hdr-role').textContent='Super-Admin';
   await resolveSite();
   await loadPermissions();
 }
 
-async function getToken() {
-  const tenantId = account?.tenantId || TENANT_ID;
-  const req = { scopes: SCOPES, account,
-                authority: `https://login.microsoftonline.com/${tenantId}` };
-  try {
-    return (await msalApp.acquireTokenSilent(req)).accessToken;
-  } catch(e) {
-    const needs = e.name === 'InteractionRequiredAuthError'
-      || (e.message||'').includes('interaction_required')
-      || (e.message||'').includes('consent_required')
-      || (e.message||'').includes('login_required');
-    if (!needs) throw e;
-    if (_tokenPopupBusy) throw new Error('Bitte warten – Anmeldung läuft…');
-    _tokenPopupBusy = true;
-    try {
-      for (const k of Object.keys(sessionStorage))
-        if (k.includes('interaction_in_progress')) sessionStorage.removeItem(k);
-      return (await msalApp.acquireTokenPopup({ scopes: SCOPES, account })).accessToken;
-    } finally { _tokenPopupBusy = false; }
+async function getToken(){
+  const tenantId=account?.tenantId||TENANT_ID;
+  const req={scopes:SCOPES,account,authority:`https://login.microsoftonline.com/${tenantId}`};
+  try{return(await msalApp.acquireTokenSilent(req)).accessToken;}
+  catch(e){
+    const needs=e.name==='InteractionRequiredAuthError'
+      ||(e.message||'').includes('interaction_required')
+      ||(e.message||'').includes('consent_required')
+      ||(e.message||'').includes('login_required');
+    if(!needs)throw e;
+    if(_tokenPopupBusy)throw new Error('Bitte warten – Anmeldung läuft…');
+    _tokenPopupBusy=true;
+    try{
+      for(const k of Object.keys(sessionStorage))
+        if(k.includes('interaction_in_progress'))sessionStorage.removeItem(k);
+      return(await msalApp.acquireTokenPopup({scopes:SCOPES,account})).accessToken;
+    }finally{_tokenPopupBusy=false;}
   }
 }
 
-async function graph(method, path, body) {
-  const token = await getToken();
-  const r = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
+async function graph(method, path, body){
+  const token=await getToken();
+  const r=await fetch('https://graph.microsoft.com/v1.0'+path,{
     method,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined
+    headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+    body:body?JSON.stringify(body):undefined
   });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(`Graph ${r.status}: ${err?.error?.message || r.statusText}`);
-  }
-  if (r.status === 204) return null;
+  if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(`Graph ${r.status}: ${err?.error?.message||r.statusText}`);}
+  if(r.status===204)return null;
   return r.json();
 }
 
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════
    SP SETUP
-════════════════════════════════════════════════════════ */
-async function resolveSite() {
-  try {
-    const site = await graph('GET', `/sites/${SP_SITE_REL}`);
-    siteId = site.id;
+════════════════════════════════════════════════ */
+async function resolveSite(){
+  try{
+    const site=await graph('GET',`/sites/${SP_SITE_REL}`);
+    siteId=site.id;
     await resolveList();
-  } catch(e) {
-    toast(`Site-Fehler: ${e.message}`, 'error');
+  }catch(e){toast('Site-Fehler: '+e.message,'error');}
+}
+
+async function resolveList(){
+  try{
+    const lst=await graph('GET',`/sites/${siteId}/lists/${LIST_NAME}`);
+    listId=lst.id;
+    $id('setup-banner').hidden=true;
+  }catch(e){
+    if(e.message.includes('404')||e.message.includes('itemNotFound')||e.message.includes('does not exist')){
+      $id('setup-banner').hidden=false;
+      $id('perm-tbody').innerHTML='<tr class="empty-row"><td colspan="7">Liste noch nicht erstellt.</td></tr>';
+    }else{toast('Listen-Fehler: '+e.message,'error');}
   }
 }
 
-async function resolveList() {
-  try {
-    const lst = await graph('GET', `/sites/${siteId}/lists/${LIST_NAME}`);
-    listId = lst.id;
-    id('setup-banner').hidden = true;
-  } catch(e) {
-    if (e.message.includes('404') || e.message.includes('itemNotFound')
-        || e.message.includes('does not exist')) {
-      id('setup-banner').hidden = false;
-      id('perm-tbody').innerHTML =
-        '<tr class="empty-row"><td colspan="7">Liste noch nicht erstellt.</td></tr>';
-    } else {
-      toast(`Listen-Fehler: ${e.message}`, 'error');
-    }
-  }
-}
-
-async function setupList() {
-  const btn = document.querySelector('#setup-banner button');
-  btn.disabled = true; btn.textContent = '…';
-  try {
-    const lst = await graph('POST', `/sites/${siteId}/lists`, {
-      displayName: LIST_NAME,
-      list: { template: 'genericList' },
-      columns: [
-        { name: 'UserEmail',       text: {} },
-        { name: 'UserDisplayName', text: {} },
-        { name: 'App',             choice: { choices: ['dms','tickets','orgchart','*'] } },
-        { name: 'Role',            choice: { choices: ['admin','editor','viewer','none'] } },
-        { name: 'Notes',           text:   { allowMultipleLines: true } }
+async function setupList(){
+  const btn=document.querySelector('#setup-banner button');
+  btn.disabled=true;btn.textContent='…';
+  try{
+    const lst=await graph('POST',`/sites/${siteId}/lists`,{
+      displayName:LIST_NAME,
+      list:{template:'genericList'},
+      columns:[
+        {name:'UserEmail',text:{}},
+        {name:'UserDisplayName',text:{}},
+        {name:'App',choice:{choices:['dms','tickets','orgchart','*']}},
+        {name:'Role',choice:{choices:['admin','editor','viewer','none']}},
+        {name:'Notes',text:{allowMultipleLines:true}}
       ]
     });
-    listId = lst.id;
-    id('setup-banner').hidden = true;
-    toast('Liste AppPermissions erstellt ✓', 'success');
+    listId=lst.id;
+    $id('setup-banner').hidden=true;
+    toast('Liste AppPermissions erstellt ✓','success');
     await loadPermissions();
-  } catch(e) {
-    toast(`Erstellen fehlgeschlagen: ${e.message}`, 'error');
-    btn.disabled = false; btn.textContent = 'Liste jetzt erstellen';
+  }catch(e){
+    toast('Erstellen fehlgeschlagen: '+e.message,'error');
+    btn.disabled=false;btn.textContent='Liste erstellen';
   }
 }
 
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════
    PERMISSIONS CRUD
-════════════════════════════════════════════════════════ */
-async function loadPermissions() {
-  if (!listId) return;
-  id('perm-tbody').innerHTML =
-    '<tr class="empty-row"><td colspan="7"><div class="spinner"></div></td></tr>';
-  try {
-    let url = `/sites/${siteId}/lists/${listId}/items`
-            + `?$expand=fields&$top=999&$orderby=fields/UserEmail`;
-    let data = await graph('GET', url);
-    allPerms = (data.value || []).map(i => ({ id: i.id, ...i.fields }));
-    // handle paging
-    while (data['@odata.nextLink']) {
-      const token = await getToken();
-      data = await fetch(data['@odata.nextLink'], {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(r => r.json());
-      allPerms.push(...(data.value || []).map(i => ({ id: i.id, ...i.fields })));
+════════════════════════════════════════════════ */
+async function loadPermissions(){
+  if(!listId)return;
+  $id('perm-tbody').innerHTML='<tr class="empty-row"><td colspan="7"><div class="spin"></div></td></tr>';
+  try{
+    let url=`/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=999&$orderby=fields/UserEmail`;
+    let data=await graph('GET',url);
+    allPerms=(data.value||[]).map(i=>({id:i.id,...i.fields}));
+    while(data['@odata.nextLink']){
+      const tok=await getToken();
+      data=await fetch(data['@odata.nextLink'],{headers:{Authorization:'Bearer '+tok}}).then(r=>r.json());
+      allPerms.push(...(data.value||[]).map(i=>({id:i.id,...i.fields})));
     }
-    renderTable();
-    renderOverview();
-  } catch(e) {
-    toast(`Laden fehlgeschlagen: ${e.message}`, 'error');
-    id('perm-tbody').innerHTML =
-      `<tr class="empty-row"><td colspan="7" style="color:var(--danger)">Fehler: ${esc(e.message)}</td></tr>`;
+    renderTable();renderOverview();
+  }catch(e){
+    toast('Laden fehlgeschlagen: '+e.message,'error');
+    $id('perm-tbody').innerHTML=`<tr class="empty-row"><td colspan="7" style="color:var(--red)">Fehler: ${esc(e.message)}</td></tr>`;
   }
 }
 
-function renderTable() {
-  const search     = (id('search-input').value || '').toLowerCase();
-  const filterApp  = id('filter-app').value;
-  const filterRole = id('filter-role').value;
-
-  const rows = allPerms.filter(p => {
-    if (search && !(p.UserEmail||'').toLowerCase().includes(search)
-               && !(p.UserDisplayName||'').toLowerCase().includes(search)) return false;
-    if (filterApp  && p.App  !== filterApp)  return false;
-    if (filterRole && p.Role !== filterRole) return false;
+function renderTable(){
+  const search=(($id('search-input').value)||'').toLowerCase();
+  const fa=$id('filter-app').value;
+  const fr=$id('filter-role').value;
+  const rows=allPerms.filter(p=>{
+    if(search&&!(p.UserEmail||'').toLowerCase().includes(search)
+             &&!(p.UserDisplayName||'').toLowerCase().includes(search))return false;
+    if(fa&&p.App!==fa)return false;
+    if(fr&&p.Role!==fr)return false;
     return true;
   });
-
-  const tbody = id('perm-tbody');
-  if (!rows.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Keine Einträge gefunden.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(p => {
-    const appKey = (p.App || '').replace('*','all');
-    return `<tr>
+  const tb=$id('perm-tbody');
+  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="7">Keine Einträge gefunden.</td></tr>';return;}
+  tb.innerHTML=rows.map(p=>{
+    const ak=(p.App||'').replace('*','all');
+    return`<tr>
       <td><strong>${esc(p.UserDisplayName||'–')}</strong></td>
-      <td style="font-family:monospace;font-size:12px;color:var(--muted)">${esc(p.UserEmail||'')}</td>
-      <td><span class="badge badge-${appKey}">${esc(p.App||'–')}</span></td>
+      <td style="font-family:monospace;font-size:11px;color:var(--text-dim)">${esc(p.UserEmail||'')}</td>
+      <td><span class="badge badge-${ak}">${esc(p.App||'–')}</span></td>
       <td><span class="badge badge-${p.Role||'none'}">${esc(p.Role||'none')}</span></td>
-      <td style="color:var(--muted);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+      <td style="color:var(--text-dim);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
           title="${esc(p.Notes||'')}">${esc(p.Notes||'')}</td>
-      <td style="color:var(--muted);font-size:12px;white-space:nowrap">${fmtDate(p.Modified)}</td>
+      <td style="color:var(--text-muted);white-space:nowrap">${fmtDate(p.Modified)}</td>
       <td>
-        <button class="btn btn-secondary btn-sm" onclick='openEditModal(${JSON.stringify(p)})' title="Bearbeiten">✏️</button>
-        <button class="btn btn-danger    btn-sm" onclick="deletePermission('${p.id}','${esc(p.UserEmail)}')" title="Löschen">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick='openEditModal(${JSON.stringify(p)})'>✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePerm('${p.id}','${esc(p.UserEmail)}')">🗑</button>
       </td>
     </tr>`;
   }).join('');
 }
 
-async function deletePermission(itemId, email) {
-  if (!confirm(`Berechtigung für ${email} wirklich löschen?`)) return;
-  try {
-    await graph('DELETE', `/sites/${siteId}/lists/${listId}/items/${itemId}`);
-    allPerms = allPerms.filter(p => p.id !== itemId);
-    renderTable(); renderOverview();
-    toast('Gelöscht ✓', 'success');
-  } catch(e) { toast(`Fehler: ${e.message}`, 'error'); }
+async function deletePerm(itemId,email){
+  if(!confirm(`Berechtigung für ${email} wirklich löschen?`))return;
+  try{
+    await graph('DELETE',`/sites/${siteId}/lists/${listId}/items/${itemId}`);
+    allPerms=allPerms.filter(p=>p.id!==itemId);
+    renderTable();renderOverview();
+    toast('Gelöscht ✓','success');
+  }catch(e){toast('Fehler: '+e.message,'error');}
 }
 
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════
    MODAL
-════════════════════════════════════════════════════════ */
-function openAddModal() {
-  id('modal-title').textContent = 'Berechtigung hinzufügen';
-  id('edit-id').value  = '';
-  id('f-email').value  = '';
-  id('f-name').value   = '';
-  id('f-app').value    = 'dms';
-  id('f-role').value   = 'viewer';
-  id('f-notes').value  = '';
-  id('f-email').disabled = false;
-  id('modal').hidden   = false;
-  setTimeout(() => id('f-email').focus(), 50);
+════════════════════════════════════════════════ */
+function openAddModal(){
+  $id('modal-title').textContent='Berechtigung hinzufügen';
+  $id('edit-id').value='';
+  $id('f-email').value='';$id('f-name').value='';
+  $id('f-app').value='dms';$id('f-role').value='viewer';$id('f-notes').value='';
+  $id('f-email').disabled=false;
+  $id('modal').hidden=false;
+  setTimeout(()=>$id('f-email').focus(),50);
 }
 
-function openEditModal(p) {
-  id('modal-title').textContent = 'Berechtigung bearbeiten';
-  id('edit-id').value  = p.id;
-  id('f-email').value  = p.UserEmail || '';
-  id('f-name').value   = p.UserDisplayName || '';
-  id('f-app').value    = p.App  || 'dms';
-  id('f-role').value   = p.Role || 'viewer';
-  id('f-notes').value  = p.Notes || '';
-  id('f-email').disabled = true;
-  id('modal').hidden   = false;
+function openEditModal(p){
+  $id('modal-title').textContent='Berechtigung bearbeiten';
+  $id('edit-id').value=p.id;
+  $id('f-email').value=p.UserEmail||'';$id('f-name').value=p.UserDisplayName||'';
+  $id('f-app').value=p.App||'dms';$id('f-role').value=p.Role||'viewer';
+  $id('f-notes').value=p.Notes||'';
+  $id('f-email').disabled=true;
+  $id('modal').hidden=false;
 }
 
-function closeModal() { id('modal').hidden = true; }
+function closeModal(){$id('modal').hidden=true;}
 
-/* Auto-lookup display name from Graph when email is entered */
-function lookupUser(email) {
+function lookupUser(email){
   clearTimeout(_lookupTimer);
-  if (!email.includes('@')) return;
-  _lookupTimer = setTimeout(async () => {
-    try {
-      const r = await graph('GET',
-        `/users?$filter=mail eq '${encodeURIComponent(email)}'&$select=displayName,mail`);
-      const u = r?.value?.[0];
-      if (u?.displayName && !id('f-name').value)
-        id('f-name').value = u.displayName;
-    } catch {} // silent
-  }, 600);
+  if(!email.includes('@'))return;
+  _lookupTimer=setTimeout(async()=>{
+    try{
+      const r=await graph('GET',`/users?$filter=mail eq '${encodeURIComponent(email)}'&$select=displayName,mail`);
+      const u=r?.value?.[0];
+      if(u?.displayName&&!$id('f-name').value)$id('f-name').value=u.displayName;
+    }catch{}
+  },600);
 }
 
-async function savePermission() {
-  const itemId = id('edit-id').value;
-  const email  = id('f-email').value.trim().toLowerCase();
-  const name   = id('f-name').value.trim();
-  const app    = id('f-app').value;
-  const role   = id('f-role').value;
-  const notes  = id('f-notes').value.trim();
-
-  if (!email) { toast('E-Mail fehlt', 'error'); return; }
-
-  const btn = id('modal-save-btn');
-  btn.disabled = true; btn.textContent = '…';
-
-  try {
-    const fields = {
-      Title: email, UserEmail: email, UserDisplayName: name,
-      App: app, Role: role, Notes: notes
-    };
-    if (itemId) {
-      await graph('PATCH',
-        `/sites/${siteId}/lists/${listId}/items/${itemId}/fields`, fields);
-      const i = allPerms.findIndex(p => p.id === itemId);
-      if (i !== -1) allPerms[i] = { ...allPerms[i], ...fields };
-      toast('Gespeichert ✓', 'success');
-    } else {
-      const res = await graph('POST',
-        `/sites/${siteId}/lists/${listId}/items`, { fields });
-      allPerms.push({ id: res.id, ...res.fields, ...fields });
-      toast('Hinzugefügt ✓', 'success');
+async function savePermission(){
+  const itemId=$id('edit-id').value;
+  const email=$id('f-email').value.trim().toLowerCase();
+  const name=$id('f-name').value.trim();
+  const app=$id('f-app').value;
+  const role=$id('f-role').value;
+  const notes=$id('f-notes').value.trim();
+  if(!email){toast('E-Mail fehlt','error');return;}
+  const btn=$id('modal-save-btn');
+  btn.disabled=true;btn.textContent='…';
+  try{
+    const fields={Title:email,UserEmail:email,UserDisplayName:name,App:app,Role:role,Notes:notes};
+    if(itemId){
+      await graph('PATCH',`/sites/${siteId}/lists/${listId}/items/${itemId}/fields`,fields);
+      const i=allPerms.findIndex(p=>p.id===itemId);
+      if(i!==-1)allPerms[i]={...allPerms[i],...fields};
+      toast('Gespeichert ✓','success');
+    }else{
+      const res=await graph('POST',`/sites/${siteId}/lists/${listId}/items`,{fields});
+      allPerms.push({id:res.id,...res.fields,...fields});
+      toast('Hinzugefügt ✓','success');
     }
-    closeModal();
-    renderTable(); renderOverview();
-  } catch(e) {
-    toast(`Fehler: ${e.message}`, 'error');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Speichern';
-  }
+    closeModal();renderTable();renderOverview();
+  }catch(e){toast('Fehler: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='Speichern';}
 }
 
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════
    BACKUP
-════════════════════════════════════════════════════════ */
-async function resolveBackupList(autoCreate = false) {
-  if (backupListId) return true;
-  try {
-    const lst = await graph('GET', `/sites/${siteId}/lists/${BACKUP_LIST}`);
-    backupListId = lst.id;
-    return true;
-  } catch(e) {
-    if (!autoCreate) return false;
-    const lst = await graph('POST', `/sites/${siteId}/lists`, {
-      displayName: BACKUP_LIST,
-      list: { template: 'genericList' },
-      columns: [
-        { name: 'UserEmail',        text: {} },
-        { name: 'UserDisplayName',  text: {} },
-        { name: 'App',              text: {} },
-        { name: 'Role',             text: {} },
-        { name: 'Notes',            text: { allowMultipleLines: true } },
-        { name: 'BackupTimestamp',  text: {} },
-        { name: 'BackupNote',       text: {} }
+════════════════════════════════════════════════ */
+async function resolveBackupList(autoCreate=false){
+  if(backupListId)return true;
+  try{
+    const lst=await graph('GET',`/sites/${siteId}/lists/${BACKUP_LIST}`);
+    backupListId=lst.id;return true;
+  }catch(e){
+    if(!autoCreate)return false;
+    const lst=await graph('POST',`/sites/${siteId}/lists`,{
+      displayName:BACKUP_LIST,list:{template:'genericList'},
+      columns:[
+        {name:'UserEmail',text:{}},{name:'UserDisplayName',text:{}},
+        {name:'App',text:{}},{name:'Role',text:{}},
+        {name:'Notes',text:{allowMultipleLines:true}},
+        {name:'BackupTimestamp',text:{}},{name:'BackupNote',text:{}}
       ]
     });
-    backupListId = lst.id;
-    return true;
+    backupListId=lst.id;return true;
   }
 }
 
-async function createBackup() {
-  if (!listId) { toast('Hauptliste nicht gefunden', 'error'); return; }
-  const note = prompt('Optionale Notiz (z.B. "vor Änderung 2026-04-22"):') || '';
-  const ts   = new Date().toISOString();
-  toast('Backup wird erstellt…', 'info');
-  try {
+async function createBackup(){
+  if(!listId){toast('Hauptliste nicht gefunden','error');return;}
+  const note=prompt('Optionale Notiz (z.B. "vor Änderung 2026-04-22"):')||'';
+  const ts=new Date().toISOString();
+  toast('Backup wird erstellt…','info');
+  try{
     await resolveBackupList(true);
-    let done = 0;
-    for (const p of allPerms) {
-      await graph('POST', `/sites/${siteId}/lists/${backupListId}/items`, {
-        fields: {
-          Title:           p.UserEmail || '',
-          UserEmail:       p.UserEmail || '',
-          UserDisplayName: p.UserDisplayName || '',
-          App:             p.App  || '',
-          Role:            p.Role || '',
-          Notes:           p.Notes || '',
-          BackupTimestamp: ts,
-          BackupNote:      note
-        }
-      });
+    let done=0;
+    for(const p of allPerms){
+      await graph('POST',`/sites/${siteId}/lists/${backupListId}/items`,{fields:{
+        Title:p.UserEmail||'',UserEmail:p.UserEmail||'',UserDisplayName:p.UserDisplayName||'',
+        App:p.App||'',Role:p.Role||'',Notes:p.Notes||'',BackupTimestamp:ts,BackupNote:note
+      }});
       done++;
     }
-    toast(`Backup erstellt: ${done} Einträge ✓`, 'success');
+    toast(`Backup erstellt: ${done} Einträge ✓`,'success');
     loadBackupHistory();
-  } catch(e) {
-    toast(`Backup-Fehler: ${e.message}`, 'error');
-  }
+  }catch(e){toast('Backup-Fehler: '+e.message,'error');}
 }
 
-async function loadBackupHistory() {
-  if (!siteId) return;
-  const el = id('backup-list');
-  el.innerHTML = '<div style="padding:32px;text-align:center"><div class="spinner"></div></div>';
-
-  const exists = await resolveBackupList(false);
-  if (!exists) {
-    el.innerHTML =
-      '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Noch kein Backup erstellt.</div>';
+async function loadBackupHistory(){
+  if(!siteId)return;
+  const el=$id('backup-list');
+  el.innerHTML='<div style="padding:32px;text-align:center"><div class="spin"></div></div>';
+  const exists=await resolveBackupList(false);
+  if(!exists){
+    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">Noch kein Backup erstellt.</div>';
     return;
   }
-  try {
-    const data = await graph('GET',
-      `/sites/${siteId}/lists/${backupListId}/items`
-      + `?$expand=fields&$top=1000&$orderby=fields/BackupTimestamp desc`);
-    const items = data.value || [];
-    if (!items.length) {
-      el.innerHTML =
-        '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Noch kein Backup erstellt.</div>';
+  try{
+    const data=await graph('GET',
+      `/sites/${siteId}/lists/${backupListId}/items?$expand=fields&$top=1000&$orderby=fields/BackupTimestamp desc`);
+    const items=data.value||[];
+    if(!items.length){
+      el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">Noch kein Backup erstellt.</div>';
       return;
     }
-    // group by timestamp
-    const groups = {};
-    items.forEach(i => {
-      const ts = i.fields.BackupTimestamp || 'unbekannt';
-      if (!groups[ts]) groups[ts] = { count: 0, note: i.fields.BackupNote || '' };
+    const groups={};
+    items.forEach(i=>{
+      const ts=i.fields.BackupTimestamp||'unbekannt';
+      if(!groups[ts])groups[ts]={count:0,note:i.fields.BackupNote||''};
       groups[ts].count++;
     });
-    el.innerHTML = Object.entries(groups)
-      .sort((a,b) => b[0].localeCompare(a[0]))
-      .map(([ts, g]) => `
+    el.innerHTML=Object.entries(groups)
+      .sort((a,b)=>b[0].localeCompare(a[0]))
+      .map(([ts,g])=>`
         <div class="backup-item">
           <span class="ts">📅 ${fmtDate(ts)}</span>
-          <span style="flex:1;font-size:13px">${g.note ? esc(g.note)
-            : '<em style="color:var(--muted)">Keine Notiz</em>'}</span>
-          <span style="color:var(--muted);font-size:12px">${g.count} Einträge</span>
+          <span style="flex:1">${g.note?esc(g.note):'<em style="color:var(--text-muted)">Keine Notiz</em>'}</span>
+          <span style="color:var(--text-muted)">${g.count} Einträge</span>
         </div>`).join('');
-  } catch(e) {
-    el.innerHTML =
-      `<div style="padding:24px;color:var(--danger);font-size:13px">Fehler: ${esc(e.message)}</div>`;
+  }catch(e){
+    el.innerHTML=`<div style="padding:24px;color:var(--red);font-size:13px">Fehler: ${esc(e.message)}</div>`;
   }
 }
 
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════
    OVERVIEW
-════════════════════════════════════════════════════════ */
-function renderOverview() {
-  const total = allPerms.length;
-  const users = new Set(allPerms.map(p => (p.UserEmail||'').toLowerCase())).size;
-  id('stats-grid').innerHTML = [
-    [total,  'Einträge gesamt'],
-    [users,  'Unique Benutzer'],
-    [allPerms.filter(p => p.Role==='admin').length,  'Admins'],
-    [allPerms.filter(p => p.Role==='editor').length, 'Editors'],
-    [allPerms.filter(p => p.Role==='viewer').length, 'Viewers'],
-    [allPerms.filter(p => p.App==='*').length,       'Globale Regeln'],
-  ].map(([v,l]) =>
-    `<div class="stat-card"><div class="val">${v}</div><div class="lbl">${l}</div></div>`
-  ).join('');
+════════════════════════════════════════════════ */
+function renderOverview(){
+  const total=allPerms.length;
+  const users=new Set(allPerms.map(p=>(p.UserEmail||'').toLowerCase())).size;
+  $id('stats-grid').innerHTML=[
+    [total,'Einträge gesamt'],[users,'Unique Benutzer'],
+    [allPerms.filter(p=>p.Role==='admin').length,'Admins'],
+    [allPerms.filter(p=>p.Role==='editor').length,'Editors'],
+    [allPerms.filter(p=>p.Role==='viewer').length,'Viewers'],
+    [allPerms.filter(p=>p.App==='*').length,'Globale Regeln'],
+  ].map(([v,l])=>`<div class="stat-card"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');
 
-  ['dms','tickets','orgchart'].forEach(app => {
-    const perms = allPerms.filter(p => p.App === app || p.App === '*');
-    const el = id(`ov-${app}`);
-    if (!perms.length) {
-      el.innerHTML =
-        '<div style="padding:16px;color:var(--muted);font-size:13px">Keine Einträge</div>';
-      return;
-    }
-    el.innerHTML = perms.map(p => `
+  ['dms','tickets','orgchart'].forEach(app=>{
+    const perms=allPerms.filter(p=>p.App===app||p.App==='*');
+    const el=$id('ov-'+app);
+    if(!perms.length){el.innerHTML='<div style="padding:16px;color:var(--text-muted);font-size:12px">Keine Einträge</div>';return;}
+    el.innerHTML=perms.map(p=>`
       <div class="ov-item">
         <span class="badge badge-${p.Role||'none'}" style="min-width:52px;text-align:center">${esc(p.Role||'none')}</span>
-        <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-              title="${esc(p.UserEmail||'')}">
-          ${esc(p.UserDisplayName || p.UserEmail || '–')}
-        </span>
-        ${p.App==='*' ? '<span style="font-size:10px;color:var(--muted)" title="Globale Regel">🌐</span>' : ''}
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="${esc(p.UserEmail||'')}">${esc(p.UserDisplayName||p.UserEmail||'–')}</span>
+        ${p.App==='*'?'<span style="font-size:10px;color:var(--text-muted)" title="Globale Regel">🌐</span>':''}
       </div>`).join('');
   });
 }
 
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════
    TABS
-════════════════════════════════════════════════════════ */
-document.querySelectorAll('.tab').forEach(t => {
-  t.addEventListener('click', () => {
-    const name = t.dataset.tab;
-    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
-    document.querySelectorAll('.panel').forEach(p =>
-      p.classList.toggle('active', p.id === `panel-${name}`));
-    if (name === 'backup')   loadBackupHistory();
-    if (name === 'overview') renderOverview();
+════════════════════════════════════════════════ */
+document.querySelectorAll('.hdr-tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const name=t.dataset.tab;
+    document.querySelectorAll('.hdr-tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+name));
+    if(name==='backup')loadBackupHistory();
+    if(name==='overview')renderOverview();
   });
 });
 
-/* ════════════════════════════════════════════════════════
-   HELPERS
-════════════════════════════════════════════════════════ */
-function id(s) { return document.getElementById(s); }
-function esc(s) {
-  return String(s||'')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function fmtDate(s) {
-  if (!s) return '–';
-  try {
-    return new Intl.DateTimeFormat('de-DE', {
-      day:'2-digit', month:'2-digit', year:'numeric',
-      hour:'2-digit', minute:'2-digit'
-    }).format(new Date(s));
-  } catch { return s; }
-}
-function toast(msg, type = 'info') {
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.textContent = msg;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(() => el.remove(), 4500);
-}
-
-/* ── Boot ── */
 initApp();
 </script>
 </body>

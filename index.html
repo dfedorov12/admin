@@ -45,7 +45,7 @@
     .nac-card p{color:var(--text-dim);margin-bottom:24px;font-size:14px;line-height:1.6}
 
     /* ── APP SHELL ── */
-    #app{display:none;flex-direction:column;height:100vh}
+    #app{display:none;flex-direction:column;height:100vh;overflow:hidden}
 
     /* ── HEADER ── */
     header{height:48px;background:var(--navy);display:flex;align-items:center;
@@ -68,8 +68,8 @@
       color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
 
     /* ── CONTENT ── */
-    #content{flex:1;overflow:hidden;display:flex;flex-direction:column}
-    .panel{display:none;flex:1;overflow:hidden;flex-direction:column}
+    #content{flex:1;min-height:0;display:flex;flex-direction:column}
+    .panel{display:none;flex:1;min-height:0;flex-direction:column}
     .panel.active{display:flex}
 
     /* ── TOOLBAR ── */
@@ -98,7 +98,7 @@
     .btn:disabled{opacity:.45;cursor:not-allowed}
 
     /* ── TABLE ── */
-    .table-wrap{flex:1;overflow:auto}
+    .table-wrap{flex:1;min-height:0;overflow:auto}
     table{width:100%;border-collapse:collapse}
     thead th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
       color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;
@@ -556,7 +556,7 @@ async function loadPermissions(){
   if(!listId)return;
   $id('perm-tbody').innerHTML='<tr class="empty-row"><td colspan="7"><div class="spin"></div></td></tr>';
   try{
-    let url=`/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=999&$orderby=fields/UserEmail`;
+    let url=`/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=999`;
     let data=await graph('GET',url);
     allPerms=(data.value||[]).map(i=>({id:i.id,...i.fields}));
     while(data['@odata.nextLink']){
@@ -564,6 +564,8 @@ async function loadPermissions(){
       data=await fetch(data['@odata.nextLink'],{headers:{Authorization:'Bearer '+tok}}).then(r=>r.json());
       allPerms.push(...(data.value||[]).map(i=>({id:i.id,...i.fields})));
     }
+    // Sort client-side (SP non-indexed columns can't be sorted via OData)
+    allPerms.sort((a,b)=>(a.UserEmail||'').localeCompare(b.UserEmail||''));
     renderTable();renderOverview();
   }catch(e){
     toast('Laden fehlgeschlagen: '+e.message,'error');
@@ -730,7 +732,7 @@ async function loadBackupHistory(){
   }
   try{
     const data=await graph('GET',
-      `/sites/${siteId}/lists/${backupListId}/items?$expand=fields&$top=1000&$orderby=fields/BackupTimestamp desc`);
+      `/sites/${siteId}/lists/${backupListId}/items?$expand=fields&$top=1000`);
     const items=data.value||[];
     if(!items.length){
       el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">Noch kein Backup erstellt.</div>';

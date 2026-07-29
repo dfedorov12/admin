@@ -120,6 +120,10 @@
     .badge-none   {background:rgba(107,114,128,.1);color:#4b5563}
     .badge-superadmin{background:var(--blue-bg);color:var(--blue)}
 
+    /* hidden schlaegt display – sonst zeigen .modal-backdrop und .setup-banner
+       trotz hidden-Attribut ihr display:flex und stehen beim Laden offen. */
+    [hidden]{display:none !important}
+
     /* ── SETUP BANNER ── */
     .setup-banner{margin:16px 20px;padding:12px 16px;background:var(--yellow-bg);
       border:1.5px solid var(--yellow);border-radius:var(--r);
@@ -233,19 +237,13 @@
 
     <!-- ── Berechtigungen ─────────────────────────────── -->
     <div class="panel active" id="panel-permissions">
-      <div id="setup-banner" class="setup-banner" hidden>
-        <p>⚠️ SharePoint-Liste <strong>AppPermissions</strong> existiert noch nicht.</p>
-        <button class="btn btn-primary btn-sm" onclick="setupList()">Liste erstellen</button>
-      </div>
+      <div id="setup-banner" class="setup-banner" hidden></div>
+      <div id="site-hint" class="setup-banner" hidden></div>
       <div class="toolbar">
         <input  type="text" class="tkt-search" id="search-input"
                 placeholder="🔍 Name oder E-Mail…" oninput="renderTable()">
         <select class="sel" id="filter-app"  onchange="renderTable()">
           <option value="">Alle Apps</option>
-          <option value="dms">DMS</option>
-          <option value="tickets">Tickets</option>
-          <option value="orgchart">OrgChart</option>
-          <option value="*">* Global</option>
         </select>
         <select class="sel" id="filter-role" onchange="renderTable()">
           <option value="">Alle Rollen</option>
@@ -254,6 +252,8 @@
           <option value="viewer">Viewer</option>
           <option value="none">None</option>
         </select>
+        <select class="sel" id="site-select" onchange="switchSite(this.value)"
+                title="SharePoint-Site der Liste AppPermissions"></select>
         <div class="ml-auto gap">
           <button class="btn btn-ghost"    onclick="loadPermissions()">↺ Aktualisieren</button>
           <button class="btn btn-primary"  onclick="openAddModal()">+ Hinzufügen</button>
@@ -305,20 +305,7 @@
     <!-- ── Übersicht ──────────────────────────────────── -->
     <div class="panel" id="panel-overview">
       <div class="stats-row" id="stats-grid"></div>
-      <div class="ov-grid">
-        <div class="ov-card">
-          <div class="ov-card-hdr">🟣 DMS</div>
-          <div id="ov-dms"></div>
-        </div>
-        <div class="ov-card">
-          <div class="ov-card-hdr">🔵 Tickets</div>
-          <div id="ov-tickets"></div>
-        </div>
-        <div class="ov-card">
-          <div class="ov-card-hdr">🟠 OrgChart</div>
-          <div id="ov-orgchart"></div>
-        </div>
-      </div>
+      <div class="ov-grid" id="ov-grid"></div>
     </div>
 
   </div><!-- #content -->
@@ -339,12 +326,7 @@
     </div>
     <div class="field-row">
       <label>App *</label>
-      <select id="f-app">
-        <option value="dms">DMS</option>
-        <option value="tickets">Tickets</option>
-        <option value="orgchart">OrgChart</option>
-        <option value="*">* (Alle Apps)</option>
-      </select>
+      <select id="f-app"></select>
     </div>
     <div class="field-row">
       <label>Rolle *</label>
@@ -375,9 +357,48 @@
 const CLIENT_ID    = '75e627e8-2de0-4ec6-bec9-311757b89e08';
 const TENANT_ID    = 'fdb70646-023a-403b-a4b9-1f474a935123';
 const SUPER_ADMINS = ['administrator@dihag.com'];
-const SP_SITE_REL  = 'dihag.sharepoint.com:/sites/ticket';
+/* Alle Apps, die ihre Rollen aus AppPermissions lesen. Eine Stelle – daraus
+   entstehen die beiden Auswahllisten, die Uebersichtskarten und die zulaessigen
+   Werte der Spalte "App". Neue App? Hier eine Zeile ergaenzen. */
+const APPS = [
+  {key:'dms',                       label:'DMS',                   icon:'🟣'},
+  {key:'tickets',                   label:'Tickets',               icon:'🔵'},
+  {key:'orgchart',                  label:'OrgChart',              icon:'🟠'},
+  {key:'rundumdenjob',              label:'Rund um den Job',       icon:'🟢'},
+  {key:'zapp',                      label:'ZAPP',                  icon:'🎁'},
+  {key:'bedarfsanfrage',            label:'Bedarfsanfrage',        icon:'🛒'},
+  {key:'e-rechnung',                label:'E-Rechnung',            icon:'🧾'},
+  {key:'richtlinienmanagementsystem',label:'Richtlinien (RMS)',    icon:'📘'},
+  {key:'besuchermanagement',        label:'Besuchermanagement',    icon:'🚪'},
+  {key:'3d-space',                  label:'3D-Space',              icon:'🧊'},
+  {key:'ims',                       label:'ISMS-Portal',           icon:'🔐'}
+];
+const ROLES = ['admin','editor','viewer','none'];
+
+/* Mehrere Sites moeglich – massgeblich ist die, aus der die Apps lesen.
+   Die Auswahl bleibt lokal im Browser (localStorage), es wird nichts umgezogen. */
+const SP_SITES = [
+  {rel:'dihag.sharepoint.com:/sites/ticket', label:'/sites/ticket', hinweis:'wird von den Apps gelesen'},
+  {rel:'dihag.sharepoint.com:/sites/IT',     label:'/sites/IT',     hinweis:'zusaetzliche Liste'}
+];
+const APPS_LESEN_VON = SP_SITES[0].rel;   // Stand in den App-Konfigurationen
+let SP_SITE_REL = (()=>{
+  try{ const s=localStorage.getItem('admin_site'); if(SP_SITES.some(x=>x.rel===s))return s; }catch{}
+  return SP_SITES[0].rel;
+})();
 const LIST_NAME    = 'AppPermissions';
 const BACKUP_LIST  = 'AppPermissionsBackup';
+
+/* Spalten, die die Liste braucht. Fehlen sie, koennen Eintraege zwar angelegt
+   werden, die Werte landen aber im Nirgendwo – SharePoint verwirft unbekannte
+   Felder still. Darum die Pruefung beim Laden. */
+const REQUIRED_COLS = [
+  {name:'UserEmail',       def:{text:{}}},
+  {name:'UserDisplayName', def:{text:{}}},
+  {name:'App',             def:{text:{}}},
+  {name:'Role',            def:{text:{}}},
+  {name:'Notes',           def:{text:{allowMultipleLines:true}}}
+];
 const SCOPES       = ['User.Read','Sites.Read.All','Sites.ReadWrite.All',
                       'Files.ReadWrite.All','Mail.Send'];
 
@@ -464,8 +485,21 @@ async function afterLogin(){
   $id('app').style.display='flex';
   $id('hdr-name').textContent=account.name||account.username;
   $id('hdr-role').textContent='Super-Admin';
+  fillSelects();
   await resolveSite();
   await loadPermissions();
+}
+
+/* Auswahllisten aus APPS/SP_SITES aufbauen – so muss eine neue App nur oben
+   in APPS eingetragen werden und taucht ueberall auf. */
+function fillSelects(){
+  const optApps=APPS.map(a=>`<option value="${esc(a.key)}">${esc(a.label)}</option>`).join('');
+  $id('filter-app').innerHTML='<option value="">Alle Apps</option>'+optApps+
+    '<option value="*">* Global</option>';
+  $id('f-app').innerHTML=optApps+'<option value="*">* (Alle Apps)</option>';
+  $id('site-select').innerHTML=SP_SITES.map(s=>
+    `<option value="${esc(s.rel)}"${s.rel===SP_SITE_REL?' selected':''}>${esc(s.label)}</option>`).join('');
+  renderSiteHint();
 }
 
 async function getToken(){
@@ -515,12 +549,106 @@ async function resolveList(){
   try{
     const lst=await graph('GET',`/sites/${siteId}/lists/${LIST_NAME}`);
     listId=lst.id;
-    $id('setup-banner').hidden=true;
+    await checkColumns();
   }catch(e){
     if(e.message.includes('404')||e.message.includes('itemNotFound')||e.message.includes('does not exist')){
-      $id('setup-banner').hidden=false;
+      listId=null;
+      showBanner(`⚠️ Liste <strong>${LIST_NAME}</strong> existiert auf `+
+        `<strong>${siteLabel()}</strong> noch nicht.`,'Liste erstellen','setupList()');
       $id('perm-tbody').innerHTML='<tr class="empty-row"><td colspan="7">Liste noch nicht erstellt.</td></tr>';
     }else{toast('Listen-Fehler: '+e.message,'error');}
+  }
+}
+
+const siteLabel=()=> (SP_SITES.find(s=>s.rel===SP_SITE_REL)||{}).label||SP_SITE_REL;
+
+function showBanner(html,btnText,btnCall){
+  const b=$id('setup-banner');
+  b.innerHTML=`<p>${html}</p>`+
+    (btnText?`<button class="btn btn-primary btn-sm" onclick="${btnCall}">${btnText}</button>`:'');
+  b.hidden=false;
+}
+
+/* Prueft, ob die Liste alle Spalten hat. Eine Liste ohne Felder nimmt Eintraege
+   zwar an, verwirft aber jeden unbekannten Wert still – der haeufigste Grund
+   fuer "gespeichert, aber nichts steht drin". */
+async function checkColumns(){
+  try{
+    const res=await graph('GET',`/sites/${siteId}/lists/${listId}/columns?$select=name,displayName,choice&$top=200`);
+    const cols=res.value||[];
+    const vorhanden=new Set(cols.map(c=>c.name));
+    const fehlend=REQUIRED_COLS.filter(c=>!vorhanden.has(c.name)).map(c=>c.name);
+
+    // Choice-Spalten: neue App-Schluessel muessen als Auswahl erlaubt sein,
+    // sonst weist SharePoint den Wert ab.
+    const appCol=cols.find(c=>c.name==='App');
+    const rollCol=cols.find(c=>c.name==='Role');
+    const fehlendeApps = appCol?.choice
+      ? [...APPS.map(a=>a.key),'*'].filter(k=>!(appCol.choice.choices||[]).includes(k)) : [];
+    const fehlendeRollen = rollCol?.choice
+      ? ROLES.filter(r=>!(rollCol.choice.choices||[]).includes(r)) : [];
+
+    _repair={fehlend,fehlendeApps,fehlendeRollen};
+    if(fehlend.length||fehlendeApps.length||fehlendeRollen.length){
+      const teile=[];
+      if(fehlend.length)       teile.push(`fehlende Spalten: <strong>${fehlend.join(', ')}</strong>`);
+      if(fehlendeApps.length)  teile.push(`Spalte <strong>App</strong> kennt nicht: <strong>${fehlendeApps.join(', ')}</strong>`);
+      if(fehlendeRollen.length)teile.push(`Spalte <strong>Role</strong> kennt nicht: <strong>${fehlendeRollen.join(', ')}</strong>`);
+      showBanner(`⚠️ <strong>${LIST_NAME}</strong> auf <strong>${siteLabel()}</strong> ist unvollständig – `+
+        teile.join(' · ')+'. Ohne die Spalten werden Werte beim Speichern still verworfen.',
+        'Spalten ergänzen','repairColumns()');
+    }else{
+      $id('setup-banner').hidden=true;
+    }
+  }catch(e){
+    // Spalten nicht lesbar ist kein Grund, die Seite zu blockieren
+    console.warn('Spaltenpruefung:',e.message);
+    $id('setup-banner').hidden=true;
+  }
+}
+
+let _repair={fehlend:[],fehlendeApps:[],fehlendeRollen:[]};
+
+async function repairColumns(){
+  const btn=document.querySelector('#setup-banner button');
+  btn.disabled=true;btn.textContent='…';
+  let ok=0,fehler=[];
+  try{
+    for(const name of _repair.fehlend){
+      const def=REQUIRED_COLS.find(c=>c.name===name).def;
+      try{
+        await graph('POST',`/sites/${siteId}/lists/${listId}/columns`,{name,displayName:name,...def});
+        ok++;
+      }catch(e){fehler.push(name+': '+e.message);}
+    }
+    if(_repair.fehlendeApps.length){
+      try{
+        const c=await graph('GET',`/sites/${siteId}/lists/${listId}/columns?$select=id,name,choice&$top=200`);
+        const col=(c.value||[]).find(x=>x.name==='App');
+        const neu=[...new Set([...(col.choice.choices||[]),...APPS.map(a=>a.key),'*'])];
+        await graph('PATCH',`/sites/${siteId}/lists/${listId}/columns/${col.id}`,{choice:{choices:neu}});
+        ok++;
+      }catch(e){fehler.push('App-Auswahl: '+e.message);}
+    }
+    if(_repair.fehlendeRollen.length){
+      try{
+        const c=await graph('GET',`/sites/${siteId}/lists/${listId}/columns?$select=id,name,choice&$top=200`);
+        const col=(c.value||[]).find(x=>x.name==='Role');
+        const neu=[...new Set([...(col.choice.choices||[]),...ROLES])];
+        await graph('PATCH',`/sites/${siteId}/lists/${listId}/columns/${col.id}`,{choice:{choices:neu}});
+        ok++;
+      }catch(e){fehler.push('Rollen-Auswahl: '+e.message);}
+    }
+    if(fehler.length){
+      toast('Teilweise fehlgeschlagen: '+fehler[0],'error');
+      console.warn(fehler);
+    }else{
+      toast(ok+' Anpassung(en) übernommen ✓','success');
+    }
+    await checkColumns();
+    await loadPermissions();
+  }finally{
+    btn.disabled=false;btn.textContent='Spalten ergänzen';
   }
 }
 
@@ -531,13 +659,8 @@ async function setupList(){
     const lst=await graph('POST',`/sites/${siteId}/lists`,{
       displayName:LIST_NAME,
       list:{template:'genericList'},
-      columns:[
-        {name:'UserEmail',text:{}},
-        {name:'UserDisplayName',text:{}},
-        {name:'App',choice:{choices:['dms','tickets','orgchart','*']}},
-        {name:'Role',choice:{choices:['admin','editor','viewer','none']}},
-        {name:'Notes',text:{allowMultipleLines:true}}
-      ]
+      // Text statt Choice: neue Apps sollen ohne Spaltenumbau dazukommen koennen
+      columns:REQUIRED_COLS.map(c=>({name:c.name,displayName:c.name,...c.def}))
     });
     listId=lst.id;
     $id('setup-banner').hidden=true;
@@ -547,6 +670,27 @@ async function setupList(){
     toast('Erstellen fehlgeschlagen: '+e.message,'error');
     btn.disabled=false;btn.textContent='Liste erstellen';
   }
+}
+
+/* Site umschalten – nur die Ansicht wechselt, es wird nichts kopiert. */
+async function switchSite(rel){
+  SP_SITE_REL=rel;
+  try{localStorage.setItem('admin_site',rel);}catch{}
+  siteId=null;listId=null;backupListId=null;allPerms=[];
+  $id('perm-tbody').innerHTML='<tr class="empty-row"><td colspan="7"><div class="spin"></div></td></tr>';
+  renderSiteHint();
+  await resolveSite();
+  await loadPermissions();
+}
+
+function renderSiteHint(){
+  const el=$id('site-hint');
+  if(!el)return;
+  el.hidden = SP_SITE_REL===APPS_LESEN_VON;
+  el.innerHTML = SP_SITE_REL===APPS_LESEN_VON ? '' :
+    `⚠️ Angezeigt wird <strong>${siteLabel()}</strong>. Die Apps lesen ihre Rollen aber aus `+
+    `<strong>${(SP_SITES.find(s=>s.rel===APPS_LESEN_VON)||{}).label}</strong> – `+
+    `Änderungen hier wirken sich dort nicht aus.`;
 }
 
 /* ════════════════════════════════════════════════
@@ -771,9 +915,20 @@ function renderOverview(){
     [allPerms.filter(p=>p.App==='*').length,'Globale Regeln'],
   ].map(([v,l])=>`<div class="stat-card"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');
 
-  ['dms','tickets','orgchart'].forEach(app=>{
+  // Karten je App aufbauen (einmalig), danach befuellen
+  const grid=$id('ov-grid');
+  if(grid && grid.children.length!==APPS.length){
+    grid.innerHTML=APPS.map(a=>`
+      <div class="ov-card">
+        <div class="ov-card-hdr">${a.icon} ${esc(a.label)}</div>
+        <div id="ov-${esc(a.key)}"></div>
+      </div>`).join('');
+  }
+
+  APPS.map(a=>a.key).forEach(app=>{
     const perms=allPerms.filter(p=>p.App===app||p.App==='*');
     const el=$id('ov-'+app);
+    if(!el)return;
     if(!perms.length){el.innerHTML='<div style="padding:16px;color:var(--text-muted);font-size:12px">Keine Einträge</div>';return;}
     el.innerHTML=perms.map(p=>`
       <div class="ov-item">

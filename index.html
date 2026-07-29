@@ -378,8 +378,8 @@ const ROLES = ['admin','editor','viewer','none'];
 /* Mehrere Sites moeglich – massgeblich ist die, aus der die Apps lesen.
    Die Auswahl bleibt lokal im Browser (localStorage), es wird nichts umgezogen. */
 const SP_SITES = [
-  {rel:'dihag.sharepoint.com:/sites/ticket', label:'/sites/ticket', hinweis:'wird von den Apps gelesen'},
-  {rel:'dihag.sharepoint.com:/sites/IT',     label:'/sites/IT',     hinweis:'zusaetzliche Liste'}
+  {rel:'dihag.sharepoint.com:/sites/IT',     label:'/sites/IT',     hinweis:'wird von den Apps gelesen'},
+  {rel:'dihag.sharepoint.com:/sites/ticket', label:'/sites/ticket', hinweis:'alte Liste'}
 ];
 const APPS_LESEN_VON = SP_SITES[0].rel;   // Stand in den App-Konfigurationen
 let SP_SITE_REL = (()=>{
